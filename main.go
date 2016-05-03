@@ -216,7 +216,7 @@ func main() {
 	 * Establishing the connection to the NATS server
 	 */
 	var err error
-	connection, err = plugins.EstablishConnection("nats://agilestack-nats.agilestacknet:4222")
+	connection, err = plugins.EstablishConnection("nats://nats.agilestacknet:4222")
 	if err != nil {
 		log.Fatal("Error while connecting to the Nats server :", err)
 	}
