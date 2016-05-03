@@ -8,9 +8,7 @@ import (
 	"os"
 	"time"
 
-	composerPb "bitbucket.org/eogile/agilestackreloaded/plugins/composer2-api/proto"
 	pb "github.com/eogile/agilestack-core/proto"
-	"github.com/eogile/agilestack-utils/files"
 	"github.com/eogile/agilestack-utils/plugins"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/nats-io/nats"
@@ -19,7 +17,6 @@ import (
 const (
 	pluginName      = "agilestack-plugin-manager"
 	defaultHttpPort = "8080"
-	reloadTopic     = composerPb.ReloadTopicPrefix + pluginName
 )
 
 var jsonpbMarshaler jsonpb.Marshaler
@@ -30,19 +27,6 @@ type plugin struct {
 }
 
 var connection *nats.EncodedConn
-
-/*
- * Configure the shared folder for web composition
- */
-func setupShareFolder() {
-	destPublic := "/shared/" + pluginName + "/composer/public"
-	destSrc := "/shared/" + pluginName + "/composer/src"
-	log.Printf("Remove dir %v", destPublic)
-	//Have to remove to clean properly : strange behavior with copy : the files seems copied but http.Get on it has a problem
-	os.Remove(destPublic)
-	files.CopyDir("/plugin/src", destSrc)
-	files.CopyDir("/plugin/public", destPublic)
-}
 
 /*
  * Run listening server
@@ -193,23 +177,6 @@ func handlePlugins(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/*
- * Subscribing to the NATS "reload" topic
- */
-func subscribeToReloadTopic(connection *nats.EncodedConn) {
-	connection.Subscribe(reloadTopic, func(request *composerPb.ReloadRequest) {
-		log.Println("Message received for view reload")
-
-		composerBundle := "/shared/agilestack-composer/output/" + pluginName + "/public/bundle.js"
-		localBundle := "/plugin/public/bundle.js"
-		os.Remove(localBundle)
-		err := files.CopyFile(composerBundle, localBundle)
-		if err != nil {
-			log.Println("Error while reloading (copy) :", err)
-		}
-	})
-}
-
 func main() {
 
 	/*
@@ -224,14 +191,6 @@ func main() {
 	// Initialize jsonpb Marshaller
 	jsonpbMarshaler = jsonpb.Marshaler{}
 	jsonpbMarshaler.Indent = "  "
-
-	// Configure the shared folder for web composition
-	setupShareFolder()
-
-	/*
-	 * Subscribing to the "reload" topic
-	 */
-	subscribeToReloadTopic(connection)
 
 	//Run listening server
 	startHttp()
